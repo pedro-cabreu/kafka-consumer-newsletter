@@ -24,6 +24,13 @@ bin/kafka-server-start.sh config/server.properties
 bin/kafka-console-producer.sh --topic quickstart-events --bootstrap-server localhost:9092
 ```
 
+4. Run the python app
+
+```bash
+python3 src/views/mainWindow.py
+```
+
+5. Ready to go! Now the new notifications will be displayed on the pyqt window.
 
 ## License
 
