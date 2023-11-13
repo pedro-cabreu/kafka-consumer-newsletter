@@ -2,8 +2,28 @@ from PyQt6 import QtWidgets, QtGui, QtCore
 import json
 from confluent_kafka import Consumer, KafkaError
 from threading import Thread
+import requests
 
 class Ui_MainWindow(object):
+
+    def init(self):
+
+        # make a get request on the api 127.0.0.1:8000/api/news
+        response = requests.get("http://127.0.0.1:8000/api/news")
+
+        # get the json response
+        json_response = response.json()
+
+        # iterate over the json response
+        for news in json_response:
+            # get the news title
+            title = news['title']
+            message = news['message']
+
+            # update the ui with the news title
+            self.update_ui_with_message(title, message)
+        
+
     def setupUi(self, MainWindow):
         
         MainWindow.setObjectName("MainWindow")
@@ -30,6 +50,9 @@ class Ui_MainWindow(object):
         self.listWidget.setViewMode(QtWidgets.QListView.ViewMode.ListMode)
         self.listWidget.setObjectName("listWidget")
 
+        # ADd padding to the list widget
+        self.listWidget.setContentsMargins(10, 10, 10, 10)
+
         # Inicie um loop de leitura Kafka em uma thread separada
         self.read_kafka_thread = Thread(target=self.read_kafka)
         self.read_kafka_thread.daemon = True
@@ -45,6 +68,8 @@ class Ui_MainWindow(object):
         self.menuAbout.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.menuAbout.setToolTipsVisible(True)
         self.menuAbout.setObjectName("menuAbout")
+
+        self.init()
 
         # On click on about menu
         def menuAboutClicked():
@@ -88,7 +113,7 @@ class Ui_MainWindow(object):
         consumer = Consumer(consumer_config)
 
         # Inscreva-se no tópico desejado
-        consumer.subscribe(['quickstart-events'])  # Subscreva-se ao tópico desejado
+        consumer.subscribe(['testTopic'])  # Subscreva-se ao tópico desejado
 
         while True:
             msg = consumer.poll(1.0)  # Aguarde por mensagens por até 1 segundo
@@ -102,16 +127,38 @@ class Ui_MainWindow(object):
                     print(f"Error while consuming message: {msg.error()}")
             else:
                 # Atualize a interface do PyQt com a mensagem Kafka
-                message_text = msg.value().decode('utf-8')
-                self.update_ui_with_message(message_text)
+                json_string = msg.value().decode('utf-8')
+
+                # Converta a string JSON em um objeto Python
+                news = json.loads(json_string)
+
+                # Obtenha o título e a mensagem da notícia
+                title = news['title']
+                message_text = news['message']
+
+                # Atualize a interface do PyQt com a mensagem Kafka
+                self.update_ui_with_message(title, message_text)
 
         # Feche o consumidor Kafka quando você terminar de usá-lo
         consumer.close()
 
-    def update_ui_with_message(self, message):
-        # Atualize a lista no PyQt com a mensagem Kafka
-        item = QtWidgets.QListWidgetItem(message)
-        self.listWidget.addItem(item)
+    def update_ui_with_message(self, title, message):
+        # Create a item on the list with a big bold title and a small italic message
+        item = QtWidgets.QListWidgetItem()
+        
+        # Set the title as text and message 
+        item.setText(f"{title}\n{message}")
+
+        # Set the item size
+        item.setSizeHint(QtCore.QSize(100, 100))    
+
+        # Add the item to the top of the list
+        self.listWidget.insertItem(0, item)
+
+        # Select the created item
+        self.listWidget.setCurrentItem(item)
+
+
 
 if __name__ == "__main__":
     import sys
